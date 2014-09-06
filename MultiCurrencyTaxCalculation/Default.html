@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html ng-app="currencyExchangeModule">
+<head>
+    <title>Multi Currency Tax Calculation</title>
+    <script src="Scripts/jquery-2.1.1.js"></script>
+    <script src="Scripts/angular.js"></script>
+    <script src="Scripts/bootstrap.js"></script>
+    <script src="Scripts/money.js"></script>
+    <script src="Scripts/modernizr-2.7.2.js"></script>
+    <script src="Scripts/uicontrols.js"></script>
+    <link href="Content/bootstrap.css" rel="stylesheet" />
+    <link href="Content/bootstrap-theme.css" rel="stylesheet" />
+    <link href="Content/normalize.css" rel="stylesheet" />
+    <link href="Content/Site.css" rel="stylesheet" />
+</head>
+<body ng-controller="currencyExchangeController">
+    
+    <header class="page-header h1">Expats Tax Calculation</header>
+    <div class="container">
+        <form class="form-horizontal" name="form" role="form" novalidate ng-submit="calculateTax()">
+            <fieldset>
+                <legend>Expats Tax Calculation</legend>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="expat-country">Expatriate Country</label>
+                    <div class="col-sm-9">
+                        <div class="row">
+                            <div class="col-xs-3">
+                                <select class="form-control col-sm-2" name="expat-country" id="expat-country" ng-model="taxParameters.expatCountry" ng-change="getTaxDetailsByCountry()" 
+                                        ng-options="country.countryName for country in countries" required>
+                                    <option value="">Choose the Country</option>                                    
+                                </select>
+                                <span ng-show="!form.expat-country.$pristine && form.expat-country.$invalid">Country is required</span>
+                            </div>                            
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="tax-year">Tax Year</label>
+                    <div class="col-sm-9">
+                        <select class="form-control col-sm-2" name="tax-year" id="tax-year" ng-model="taxParameters.taxYear" ng-options="taxYear.taxYear for taxYear in taxYears" required>
+                            <option value="">Choose the Taxyear</option>
+                        </select>
+                        <span ng-show="!form.tax-year.$pristine && form.tax-year.$invalid">Tax Year is required</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="tax-category">Tax Category</label>
+                    <div class="col-sm-9">
+                        <select class="form-control col-sm-2" name="tax-category" id="tax-category" ng-model="taxParameters.taxCategory" ng-options="taxCategory.taxCategoryName for taxCategory in taxCategories" required>
+                            <option value="">Choose the Tax Category</option>
+                        </select>
+                        <span ng-show="!form.tax-category.$pristine && form.tax-category.$invalid">Tax Category is required</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="gross-salary">Gross Salary</label>
+                    <div class="col-sm-3">
+                        <input type="number" min="1" class="form-control" name="gross-salary" ng-model="taxParameters.inputAmount" id="gross-salary" placeholder="Gross Salary" required />
+                        <span ng-show="!form.gross-salary.$pristine && form.gross-salary.$invalid">Gross Salary is required</span>
+                    </div>
+
+                    <div class="radio col-sm-6"> 
+                        <label class="radio-inline active">                      
+                        <input type="radio" value="annually" name="salaryTerm" ng-model="taxParameters.salaryTerm" >
+                        Annually</label>
+                        <label class="radio-inline">
+                        <input type="radio" value="monthly" name="salaryTerm" ng-model="taxParameters.salaryTerm">
+                        Monthly</label>
+                    </div>
+
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="source-currency">Source Currency</label>
+                    <div class="col-sm-3">
+                        <select class="form-control col-sm-2" name="source-currency" id="source-currency" ng-model="taxParameters.sourceCurrency" ng-options="currency.currencySymbol for currency in currencies" required>
+                            <option value="">Choose the Source Currency</option>
+                        </select>
+                        <span ng-show="!form.source-currency.$pristine && form.source-currency.$invalid">Source Currency is required</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" for="target-currency">Target Currency</label>
+                    <div class="col-sm-3">
+                        <select class="form-control col-sm-2" name="target-currency" id="target-currency" ng-model="taxParameters.targetCurrency" ng-options="currency.currencySymbol for currency in currencies" required>
+                            <option value="">Choose the Target Currency</option>
+                        </select>
+                        <span ng-show="!form.target-currency.$pristine && form.target-currency.$invalid">Target Currency is required</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-sm-offset-3 col-sm-10">
+                        <button type="submit" class="btn btn-default"> Calculate Tax</button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+        <div class="col-sm-10">
+            <table class="table table-striped" ng-show="taxBreakdown != null">
+                <thead>
+                    <tr>
+                        <th>
+                            Gross Pay
+                        </th>
+                         <th>
+                            Tax
+                        </th>
+                        <th>
+                            Tax Paid
+                        </th>
+                         <th>
+                            Net Pay
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>                        
+                        <td>
+                            <div>
+                            <span ng-bind="taxBreakdown.grossPay"></span>
+                            <select name="source-currency" id="Select2" ng-model="taxParameters.sourceCurrency" ng-options="currency.currencySymbol for currency in currencies" ng-change="convertGrossPayCurrency(taxBreakdown.netPay, baseCurrency.currencySymbol.trim(), taxParameters.targetCurrency.currencySymbol.trim())">                            
+                            </select>
+                            </div>
+                        </td>
+                        <td><div ng-bind="taxBreakdown.taxRate"></div></td>
+                        <td><div ng-bind="taxBreakdown.taxedAmount"></div></td>
+                        <td>
+                            <div>
+                            <span ng-bind="taxBreakdown.netPay"></span>
+                            <select name="target-currency" id="Select1" ng-model="taxParameters.targetCurrency" ng-options="currency.currencySymbol for currency in currencies" ng-change="convertNetPayCurrency(taxBreakdown.netPay, baseCurrency.currencySymbol.trim(), taxParameters.targetCurrency.currencySymbol.trim())">
+                            </select>
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+        <!--<div class="col-sm-10 bg-success">
+            <div id="answerblock">
+                
+                Source : {{taxParameters.sourceCurrency.currencySymbol}} {{taxParameters.inputAmount}}
+            </div>
+            <div id="answerblock">
+                Conversion : {{taxParameters.targetCurrency.currencySymbol}} {{convertedAmount}}
+            </div>
+            <div id="answerblock">
+                {{taxParameters.salaryTerm}}
+            </div>
+        </div>-->
+
+
+    </div>
+    <script src="Scripts/app/app.js"></script>
+    <script src="Scripts/app/controller/currencyExchangeController.js"></script>
+    <script src="Scripts/app/services/moneyRepository.js"></script>
+</body>
+</html>

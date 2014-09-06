@@ -1,0 +1,1 @@
+﻿var currencyExchangeModule = angular.module('currencyExchangeModule', []);
